@@ -19,7 +19,7 @@ import NetInfo from '@react-native-community/netinfo';
 import UdpSocket from 'react-native-udp';
 
 const TV_MAC = '70:C9:4E:09:E5:DD';
-const DEFAULT_IP = '192.168.0.12';
+const DEFAULT_IP = '192.168.0.11';
 const API_PORT = 1925;
 
 const KEYS = {
@@ -29,11 +29,14 @@ const KEYS = {
   ChUp: 'ChannelStepUp',
   ChDown: 'ChannelStepDown',
   Back: 'Back',
+  Home: 'Home',
   Up: 'CursorUp',
   Down: 'CursorDown',
   Left: 'CursorLeft',
   Right: 'CursorRight',
   Ok: 'Confirm',
+  Netflix: 'Netflix',
+  TvMode: 'WatchTV',
 };
 
 function sendWol(broadcastIp) {
@@ -162,18 +165,18 @@ function App() {
 
     function tryIp(i) {
       const ip = subnet + '.' + i;
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 600);
-      return fetch('http://' + ip + ':' + API_PORT + '/1/system', { signal: ctrl.signal })
-        .then(r => {
-          if (r.status === 200) return r.json();
-          throw new Error('no');
-        })
-        .then(d => {
-          clearTimeout(timer);
-          if (d && d.name) found.push(ip + ' (' + d.name + ')');
-        })
-        .catch(() => clearTimeout(timer));
+      return Promise.race([
+        fetch('http://' + ip + ':' + API_PORT + '/1/system')
+          .then(r => {
+            if (r.status === 200) return r.json();
+            throw new Error('no');
+          })
+          .then(d => {
+            if (d && d.name) found.push(ip + ' (' + d.name + ')');
+          })
+          .catch(() => {}),
+        new Promise(res => setTimeout(res, 800)),
+      ]);
     }
 
     function runBatch(start) {
@@ -200,7 +203,7 @@ function App() {
     });
   }
 
-  function Btn({ name, label, wide, style }) {
+function Btn({ name, label, wide, style }) {
     return (
       <TouchableOpacity
         style={[styles.btn, wide && styles.btnWide, style]}
@@ -252,7 +255,11 @@ function App() {
 
       <View style={styles.row}>
         <Btn name="Back" label="RETROCEDER" wide />
-        <Btn name="Power" label="POWER" wide />
+        <Btn name="Home" label="HOME" wide />
+      </View>
+      <View style={styles.row}>
+        <Btn name="Netflix" label="NETFLIX" wide style={styles.netflix} />
+        <Btn name="TvMode" label="MODO TV" wide />
       </View>
       <View style={styles.row}>
         <Btn name="VolUp" label="VOL +" wide />
@@ -261,6 +268,9 @@ function App() {
       <View style={styles.row}>
         <Btn name="VolDown" label="VOL -" wide />
         <Btn name="ChDown" label="CANAL -" wide />
+      </View>
+      <View style={styles.row}>
+        <Btn name="Power" label="POWER" wide style={styles.power} />
       </View>
 
       <ScrollView style={styles.logBox}>
@@ -278,98 +288,106 @@ const styles = StyleSheet.create({
   app: {
     flex: 1,
     backgroundColor: '#101418',
-    padding: 16,
+    padding: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
   },
   subtitle: {
     color: '#8a94a6',
-    fontSize: 12,
+    fontSize: 13,
   },
   ipRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 10,
   },
   input: {
     flex: 1,
     backgroundColor: '#1b2129',
     color: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 17,
   },
   smallBtn: {
     backgroundColor: '#2a3340',
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 18,
   },
   smallBtnText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 15,
   },
   scanBtn: {
     backgroundColor: '#0e5fd8',
-    borderRadius: 8,
-    paddingVertical: 12,
+    borderRadius: 10,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   scanBtnText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
   },
   scanMsg: {
     color: '#9fb3c8',
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: 13,
+    marginBottom: 10,
     textAlign: 'center',
   },
   dpad: {
     alignItems: 'center',
-    marginVertical: 8,
+    marginVertical: 10,
   },
   dpadRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   row: {
     flexDirection: 'row',
-    gap: 8,
-    marginVertical: 4,
+    gap: 12,
+    marginVertical: 6,
   },
   btn: {
     backgroundColor: '#2a3340',
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 22,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 72,
+    minWidth: 100,
   },
   btnWide: {
     flex: 1,
   },
   btnText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 19,
+    fontWeight: '700',
+  },
+  netflix: {
+    backgroundColor: '#b1060f',
+  },
+  power: {
+    backgroundColor: '#7a1f1f',
   },
   logBox: {
     flex: 1,
-    marginTop: 10,
+    marginTop: 12,
     backgroundColor: '#0b0e12',
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: 10,
+    padding: 10,
   },
   logLine: {
     color: '#7ee787',
